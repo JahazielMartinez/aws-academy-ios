@@ -106,8 +106,7 @@ struct OnboardingContainerView: View {
     
     private func completeOnboarding() {
         viewModel.saveOnboardingData()
-        appEnvironment.isOnboardingCompleted = true
-        UserDefaults.standard.set(true, forKey: "onboardingCompleted")
+        appEnvironment.completeOnboarding() // Usar la nueva función
         navigateToHome = true
     }
 }
