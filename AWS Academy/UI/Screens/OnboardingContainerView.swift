@@ -1,11 +1,13 @@
-
 import SwiftUI
 
 struct OnboardingContainerView: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
     @StateObject private var viewModel = OnboardingViewModel()
     @State private var currentStep = 0
-    @State private var navigateToHome = false
+    @State private var navigateToNotifications = false
+    @State private var buttonPressed = false
+    
+    private let totalSteps = 4 // Welcome, Level, Goal, Time
     
     var body: some View {
         NavigationStack {
@@ -15,7 +17,7 @@ struct OnboardingContainerView: View {
                 
                 VStack {
                     // Progress indicator
-                    ProgressView(value: Double(currentStep + 1), total: 4)
+                    ProgressView(value: Double(currentStep + 1), total: Double(totalSteps))
                         .progressViewStyle(LinearProgressViewStyle(tint: Theme.awsOrange))
                         .padding(.horizontal, Theme.paddingL)
                         .padding(.top, Theme.paddingM)
@@ -51,15 +53,23 @@ struct OnboardingContainerView: View {
                             }
                         }
                         
-                        Button(action: nextStep) {
-                            Text(currentStep == 3 ? "Comenzar" : "Siguiente")
+                        Button(action: {
+                            buttonPressed = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                buttonPressed = false
+                                nextStep()
+                            }
+                        }) {
+                            Text(getButtonTitle())
                                 .font(.body)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Theme.awsOrange)
+                                .background(canProceed() ? Theme.awsOrange : Color.gray)
                                 .cornerRadius(Theme.cornerRadiusM)
+                                .scaleEffect(buttonPressed ? 0.95 : 1.0)
+                                .animation(.easeInOut(duration: 0.1), value: buttonPressed)
                         }
                         .disabled(!canProceed())
                     }
@@ -68,37 +78,44 @@ struct OnboardingContainerView: View {
                 }
             }
             .navigationBarHidden(true)
-            .navigationDestination(isPresented: $navigateToHome) {
+            .navigationDestination(isPresented: $navigateToNotifications) {
                 NotificationPermissionView()
                     .navigationBarBackButtonHidden(true)
             }
         }
     }
     
+    private func getButtonTitle() -> String {
+        switch currentStep {
+        case 0: return "Comenzar"
+        case totalSteps - 1: return "Continuar"
+        default: return "Siguiente"
+        }
+    }
+    
     private func canProceed() -> Bool {
         switch currentStep {
-        case 0:
-            return true
-        case 1:
-            return viewModel.selectedLevel != nil
-        case 2:
-            return viewModel.selectedCertification != nil
-        case 3:
-            return viewModel.weeklyMinutes > 0
-        default:
-            return false
+        case 0: return true // Welcome - siempre puede continuar
+        case 1: return viewModel.selectedLevel != nil
+        case 2: return viewModel.selectedCertification != nil
+        case 3: return viewModel.weeklyMinutes > 0
+        default: return false
         }
     }
     
     private func previousStep() {
         if currentStep > 0 {
-            currentStep -= 1
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentStep -= 1
+            }
         }
     }
     
     private func nextStep() {
-        if currentStep < 3 {
-            currentStep += 1
+        if currentStep < totalSteps - 1 {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentStep += 1
+            }
         } else {
             completeOnboarding()
         }
@@ -106,8 +123,7 @@ struct OnboardingContainerView: View {
     
     private func completeOnboarding() {
         viewModel.saveOnboardingData()
-        appEnvironment.completeOnboarding() // Usar la nueva función
-        navigateToHome = true
+        navigateToNotifications = true
     }
 }
 

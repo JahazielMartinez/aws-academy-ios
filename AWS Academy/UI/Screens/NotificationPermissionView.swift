@@ -1,8 +1,10 @@
-
 import SwiftUI
+import UserNotifications
 
 struct NotificationPermissionView: View {
+    @EnvironmentObject var appEnvironment: AppEnvironment
     @State private var navigateToHome = false
+    @State private var buttonPressed = false
     
     var body: some View {
         NavigationStack {
@@ -67,7 +69,17 @@ struct NotificationPermissionView: View {
                             .padding()
                             .background(Theme.awsOrange)
                             .cornerRadius(Theme.cornerRadiusM)
+                            .scaleEffect(buttonPressed ? 0.95 : 1.0)
+                            .animation(.easeInOut(duration: 0.1), value: buttonPressed)
                     }
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in buttonPressed = true }
+                            .onEnded { _ in
+                                buttonPressed = false
+                                enableNotifications()
+                            }
+                    )
                     
                     Button(action: skipNotifications) {
                         Text("Tal vez más tarde")
@@ -87,15 +99,26 @@ struct NotificationPermissionView: View {
     }
     
     private func enableNotifications() {
-        // Aquí se solicitarán los permisos de notificación
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
             DispatchQueue.main.async {
-                navigateToHome = true
+                completeOnboarding()
             }
         }
     }
     
     private func skipNotifications() {
+        completeOnboarding()
+    }
+    
+    private func completeOnboarding() {
+        // Marcar onboarding como completado
+        appEnvironment.completeOnboarding()
+        
+        // Marcar usuario como existente para futuras sesiones
+        if let userId = appEnvironment.currentUser?.id {
+            UserDefaults.standard.set(true, forKey: "user_\(userId)_exists")
+        }
+        
         navigateToHome = true
     }
 }
@@ -124,9 +147,11 @@ struct NotificationPermissionView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             NotificationPermissionView()
+                .environmentObject(AppEnvironment())
                 .preferredColorScheme(.light)
             
             NotificationPermissionView()
+                .environmentObject(AppEnvironment())
                 .preferredColorScheme(.dark)
         }
     }

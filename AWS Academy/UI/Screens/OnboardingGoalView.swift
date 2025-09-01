@@ -1,8 +1,8 @@
-
 import SwiftUI
 
 struct OnboardingGoalView: View {
     @Binding var selectedCertification: String?
+    @State private var cardPressed: String? = nil
     
     // Certificaciones oficiales de AWS
     let certifications = [
@@ -11,49 +11,63 @@ struct OnboardingGoalView: View {
             name: "Cloud Practitioner",
             level: "Foundational",
             icon: "cloud",
-            color: "#6B46C1"
+            color: "#6B46C1",
+            difficulty: "Principiante",
+            duration: "2-3 meses"
         ),
         CertificationInfo(
             id: "solutions-architect-associate",
             name: "Solutions Architect",
             level: "Associate",
             icon: "building.2",
-            color: "#FF9900"
+            color: "#FF9900",
+            difficulty: "Intermedio",
+            duration: "3-4 meses"
         ),
         CertificationInfo(
             id: "developer-associate",
             name: "Developer",
             level: "Associate",
             icon: "chevron.left.forwardslash.chevron.right",
-            color: "#146EB4"
+            color: "#146EB4",
+            difficulty: "Intermedio",
+            duration: "3-4 meses"
         ),
         CertificationInfo(
             id: "sysops-associate",
             name: "SysOps Administrator",
             level: "Associate",
             icon: "gearshape.2",
-            color: "#36C5F0"
+            color: "#36C5F0",
+            difficulty: "Intermedio",
+            duration: "4-5 meses"
         ),
         CertificationInfo(
             id: "solutions-architect-professional",
             name: "Solutions Architect Pro",
             level: "Professional",
             icon: "building.2.fill",
-            color: "#FF6900"
+            color: "#FF6900",
+            difficulty: "Avanzado",
+            duration: "6+ meses"
         ),
         CertificationInfo(
             id: "devops-professional",
             name: "DevOps Engineer Pro",
             level: "Professional",
             icon: "infinity",
-            color: "#2EB67D"
+            color: "#2EB67D",
+            difficulty: "Avanzado",
+            duration: "6+ meses"
         ),
         CertificationInfo(
             id: "no-certification",
             name: "Solo aprender",
             level: "Sin certificación",
             icon: "book",
-            color: "#808080"
+            color: "#808080",
+            difficulty: "Flexible",
+            duration: "A tu ritmo"
         )
     ]
     
@@ -83,7 +97,15 @@ struct OnboardingGoalView: View {
                         CertificationCard(
                             certification: cert,
                             isSelected: selectedCertification == cert.id,
-                            action: { selectedCertification = cert.id }
+                            isPressed: cardPressed == cert.id,
+                            action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedCertification = cert.id
+                                }
+                            },
+                            onPressChanged: { isPressed in
+                                cardPressed = isPressed ? cert.id : nil
+                            }
                         )
                     }
                 }
@@ -99,12 +121,16 @@ struct CertificationInfo: Identifiable {
     let level: String
     let icon: String
     let color: String
+    let difficulty: String
+    let duration: String
 }
 
 struct CertificationCard: View {
     let certification: CertificationInfo
     let isSelected: Bool
+    let isPressed: Bool
     let action: () -> Void
+    let onPressChanged: (Bool) -> Void
     
     var body: some View {
         Button(action: action) {
@@ -120,9 +146,26 @@ struct CertificationCard: View {
                         .fontWeight(.medium)
                         .foregroundColor(Theme.textPrimary)
                     
-                    Text(certification.level)
-                        .font(.caption)
-                        .foregroundColor(Theme.textSecondary)
+                    HStack(spacing: 8) {
+                        Text(certification.level)
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(hex: certification.color) ?? Theme.awsOrange)
+                            .cornerRadius(4)
+                        
+                        Text(certification.difficulty)
+                            .font(.caption)
+                            .foregroundColor(Theme.textSecondary)
+                        
+                        Text("•")
+                            .foregroundColor(Theme.textTertiary)
+                        
+                        Text(certification.duration)
+                            .font(.caption)
+                            .foregroundColor(Theme.textSecondary)
+                    }
                 }
                 
                 Spacer()
@@ -131,6 +174,7 @@ struct CertificationCard: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title3)
                         .foregroundColor(Theme.awsOrange)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .padding(Theme.paddingM)
@@ -140,8 +184,18 @@ struct CertificationCard: View {
                     .stroke(isSelected ? Theme.awsOrange : Color.clear, lineWidth: 2)
             )
             .cornerRadius(Theme.cornerRadiusM)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: isPressed)
         }
         .buttonStyle(PlainButtonStyle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in onPressChanged(true) }
+                .onEnded { _ in
+                    onPressChanged(false)
+                    action()
+                }
+        )
     }
 }
 
